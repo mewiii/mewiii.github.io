@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+
+<!--
+
+     Author:    
+    Created:    2021-
+     School:    Averett University
+     Course:    CSS200-01-SP21
+    Purpose:    
+    History:
+                2021-
+
+-->
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+
+    <head>
+        <title></title>
+
+        <!-- Bootstrap from:  https://getbootstrap.com/docs/5.0/getting-started/introduction/#starter-template --> 
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+
+        <!-- include your custom CSS style after this -->
+        <link href="css-template.css" rel="stylesheet" /> <!-- make sure you use your own .css file name rather than modify the template -->
+    </head>
+
+    <body onload=""> <!-- include a Javascript Method if you want something to happen when the body of the document is loaded -->
+        <!-- start your HTML/JavaScript here -->
+
+        <div class="container">
+            <div class="row">
+                <div class="col">
+                    <h1>Canvas Demo</h1>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12" style="border: 1px solid black;">
+                    <!-- the canvas is where we'll put our graphics -->
+                    <canvas class="myCanvas">
+                        <p>Add suitable fallback here.  Default Error:  This browser does not support <b><i>Canvas</i></b>.</p>
+                    </canvas>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <h1>Bottom of Canvas</h1>
+                </div>
+            </div>
+        </div>        
+
+
+        <script>
+            // get a reference to the canvas object
+            const canvas = document.querySelector('.myCanvas');
+            // get and set the canvas width and height to match that of the display area of the web browser
+            //const width = canvas.width = window.innerWidth;
+            //const height = canvas.height = window.innerHeight;
+            const width = canvas.wdith = 400;
+            const height = canvas.height = 400;
+
+            // get a context for the canvas that supports 2-D (two dimensional) graphics
+            const ctx = canvas.getContext('2d');
+
+            //--------------------------------------------------------- setCanvasBlack()
+            // set the color and fill the canvas with that color
+            // creates the function
+            function setCanvasRed() {
+                ctx.fillStyle = 'rgb(255, 0, 0)'; // red
+                ctx.fillRect(0, 0, width, height); // coordinate pairs are (x1, y1) and (x2, y2)
+            }
+            setCanvasRed();
+        </script>
+
+        <!-- end your HTML/JavaScript here -->
+
+        <!-- leave the Bootstrap Javascript link last in the body -->
+        <!-- Option 1: Bootstrap Bundle with Popper -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+    </body>
+
+</html>

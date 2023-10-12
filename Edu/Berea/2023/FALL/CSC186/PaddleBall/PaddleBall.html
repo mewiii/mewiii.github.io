@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!--
+             Author:    Deanna Marie Wilborne
+            Created:    2020-11-10
+            Purpose:    Develop HTML/CSS/Javascript game applications
+            History:    
+                        2020-11-11, DMW, Derived from first game part 5, simplified by using external Javascript file.
+    -->
+    <head>
+        <!--
+            2020-11-10, DMW this .html file is based on the content of this web page
+            https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Client-side_web_APIs/Drawing_graphics
+            the website above was retrieved on 2020-11-09
+        -->
+        <meta charset="utf-8" />
+
+        <!-- the <title> element names the web page in the browser (on tabs) -->
+        <!-- 2020-11-24, DMW, new title! -->
+        <title>PaddleBall</title>
+
+        <!-- this style sets a zero margin and removes scroll bars from the document -->
+        <style>
+            body {
+              margin: 0;
+              overflow: hidden;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- 2020-11-24, DMW, added sound capability -->
+        <!-- paddle.mp3 from: http://soundbible.com/1669-Robot-Blip-2.html -->
+        <audio id="paddleAudio">
+            <source src="paddle2.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+        <!-- border.mp3 from: http://soundbible.com/1682-Robot-Blip.html -->
+        <audio id="borderAudio">
+            <source src="border2.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+        <!-- the canvas is where we'll put our graphics -->
+        <div onmousemove="mouseMove(event);" onmousedown="mouseDown(event);" onmouseup="mouseUp(event);">
+            <canvas class="myCanvas">
+                <p>Add suitable fallback here.  Default Error:  This browser does not support <b><i>Canvas</i></b>.</p>
+            </canvas>
+        </div>
+
+        <!-- the <script> is Javascript code that is executed by the web browser. -->
+        <!-- 2020-11-24, DMW, updated script name -->
+        <script src="PaddleBall.js"></script>
+    </body>
+</html>
