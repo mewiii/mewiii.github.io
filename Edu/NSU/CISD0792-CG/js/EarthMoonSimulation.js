@@ -304,7 +304,7 @@ var FizzyText = function() {
             "toolbar=no, scrollbars=yes, resizable=yes, top=250, left=500, width=400, height=400, location=no, menubar=no"
         );
         aboutWindow.document.write("<h3>About EarthMoonSimulation.js</h3>");
-        aboutWindow.document.write("<h4>by M. Edward Wilborne III</h4>");
+        aboutWindow.document.write("<h4>by Deanna M. Wilborne</h4>");
         aboutWindow.document.write("<p>");
         aboutWindow.document.write("A simple simulation of the Earth and Moon as they orbit the barycenter.  ");
         aboutWindow.document.write("Orbits are circular.  The motion of the barycenter towards and away from ");
