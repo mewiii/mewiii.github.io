@@ -117,18 +117,35 @@
   })();
 
   function parseCSV(text){
-    const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
-    const header = lines.shift().split(',').map(h=>h.trim());
-    const idxSpecies = header.indexOf('species');
-    const idxMass = header.indexOf('body_mass_g');
-    if(idxSpecies<0 || idxMass<0) throw new Error('CSV must have columns: species, body_mass_g');
+    // Normalize newlines and strip potential BOM
+    if(text.charCodeAt(0) === 0xFEFF){ text = text.slice(1); }
+    text = text.replace(/
+?/g, "
+");
+    const lines = text.split(/
+/).filter(l=>l.trim().length>0);
+    if(lines.length === 0) throw new Error('CSV is empty.');
+
+    // Split header, make case-insensitive map
+    const rawHeader = lines.shift();
+    const header = rawHeader.split(',').map(h=>h.trim().replace(/^\"|\"$/g, ''));
+    const lower = header.map(h=>h.toLowerCase());
+    const idxSpecies = lower.indexOf('species');
+    const idxMass = lower.indexOf('body_mass_g');
+    if(idxSpecies<0 || idxMass<0){
+      throw new Error('CSV must have columns named exactly: species, body_mass_g');
+    }
+
     const rows = [];
     for(const line of lines){
       const parts = line.split(',');
-      const sp = parts[idxSpecies]?.trim();
-      const m = parseFloat(parts[idxMass]);
-      if(!sp || !Number.isFinite(m)) continue; // drop missing
+      const sp = (parts[idxSpecies]||'').trim().replace(/^\"|\"$/g, '');
+      const m  = parseFloat((parts[idxMass]||'').trim());
+      if(!sp || !Number.isFinite(m)) continue; // drop missing or bad rows
       rows.push({species: sp, mass: m});
+    }
+    if(rows.length === 0){
+      throw new Error('No valid rows found. Check that species and body_mass_g contain values.');
     }
     return rows;
   }
@@ -217,6 +234,7 @@
       const species = Array.from(bySpecies.keys()).sort();
       speciesSelect.innerHTML = species.map(s=>`<option value="${s}">${s}</option>`).join('');
       statEls.info.textContent = `Loaded ${DATA.length} rows across ${species.length} species. Missing values removed.`;
+      if(species.length === 0){ statEls.info.textContent += ' ⚠️ No species detected — check your CSV headers and values.'; }
       // Draw once
       runSample();
     }catch(err){
