@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Penguin Body Mass – Random Sampler</title>
+  <style>
+    :root{
+      --bg:#0b1020; --card:#121a34; --ink:#e9eefc; --muted:#9fb0df; --accent:#85b7ff; --good:#4ad295; --warn:#ffcc66;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:var(--bg); color:var(--ink);}
+    .wrap{max-width:960px;margin:0 auto;padding:24px}
+    header h1{margin:0 0 8px;font-weight:700;letter-spacing:0.2px}
+    header p{margin:0;color:var(--muted)}
+    .card{background:var(--card);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.35);padding:18px;margin:18px 0}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    label{font-size:14px;color:var(--muted)}
+    select,input,button{background:#0e1733;color:var(--ink);border:1px solid #243159;border-radius:10px;padding:10px 12px;font-size:15px}
+    button{cursor:pointer;border-color:#2b68ff;background:linear-gradient(180deg,#2f78ff,#1f54d7);}
+    button.secondary{background:#0e1733;border-color:#243159}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px,1fr));gap:12px}
+    .stat{background:#0e1733;border:1px solid #243159;border-radius:12px;padding:12px}
+    .stat .k{font-size:12px;color:var(--muted)}
+    .stat .v{font-size:18px;margin-top:4px}
+    .good{color:var(--good)}
+    .warn{color:var(--warn)}
+    .footer{font-size:12px;color:var(--muted)}
+    .note{font-size:13px;color:var(--muted)}
+    .hidden{display:none}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    details{margin-top:8px}
+    canvas{width:100%; height:120px; background:#0e1733; border:1px solid #243159; border-radius:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Penguin Body Mass – Random Sampler</h1>
+      <p>Select a species and sample size, then draw a random sample to see descriptive statistics. Optionally compute a bootstrap confidence interval.</p>
+    </header>
+
+    <section class="card" id="controls">
+      <div class="row">
+        <div>
+          <label for="species">Species</label><br>
+          <select id="species"></select>
+        </div>
+        <div>
+          <label for="n">Sample size (n)</label><br>
+          <input id="n" type="number" min="2" max="10000" step="1" value="30"/>
+        </div>
+        <div>
+          <label for="withReplacement">Sampling</label><br>
+          <select id="withReplacement">
+            <option value="1">With replacement</option>
+            <option value="0">Without replacement</option>
+          </select>
+        </div>
+        <div>
+          <label for="seed">Seed (optional)</label><br>
+          <input id="seed" type="number" placeholder="e.g., 42"/>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="bootReps">Bootstrap reps (0 to skip)</label><br>
+          <input id="bootReps" type="number" min="0" max="20000" step="100" value="0"/>
+        </div>
+        <div style="align-self:end">
+          <button id="draw">Draw Sample</button>
+          <button id="reset" class="secondary">Reset</button>
+        </div>
+      </div>
+      <p class="note">Data source: <span class="mono">penguins.csv</span> in this repo (must include columns <span class="mono">species</span> and <span class="mono">body_mass_g</span>). Missing values are removed automatically.</p>
+    </section>
+
+    <section class="card" id="results" aria-live="polite">
+      <h3 style="margin-top:0">Results</h3>
+      <div id="datasetInfo" class="note"></div>
+      <div class="grid" style="margin-top:10px">
+        <div class="stat"><div class="k">n (sample)</div><div class="v" id="stat-n">–</div></div>
+        <div class="stat"><div class="k">Mean (g)</div><div class="v" id="stat-mean">–</div></div>
+        <div class="stat"><div class="k">SD (g)</div><div class="v" id="stat-sd">–</div></div>
+        <div class="stat"><div class="k">SE (g)</div><div class="v" id="stat-se">–</div></div>
+        <div class="stat"><div class="k">95% CI (theory)</div><div class="v" id="stat-ci-theory">–</div></div>
+        <div class="stat"><div class="k">95% CI (bootstrap)</div><div class="v" id="stat-ci-boot">(skipped)</div></div>
+      </div>
+      <details>
+        <summary>Show sampled values</summary>
+        <div id="sampleValues" class="mono" style="white-space:pre-wrap"></div>
+      </details>
+      <div style="margin-top:12px">
+        <canvas id="hist"></canvas>
+        <div class="note">Histogram of sample values (body mass in grams).</div>
+      </div>
+    </section>
+
+    <section class="footer">
+      <p>
+        Teaching note: The “theory” CI uses <span class="mono">mean ± 1.96 × (sd/√n)</span>. The optional bootstrap CI uses the percentile method on resampled means.
+      </p>
+    </section>
+  </div>
+
+  <script>
+  // --- Utilities ---
+  const rand = (() => {
+    let _seed = null;
+    function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296}}
+    let rng = Math.random;
+    return {
+      setSeed(s){ if(Number.isFinite(s)){ _seed = (s>>>0); rng = mulberry32(_seed);} else { _seed=null; rng = Math.random;} },
+      next(){ return rng(); },
+      choice(arr){ return arr[Math.floor(rng()*arr.length)] }
+    }
+  })();
+
+  function parseCSV(text){
+    const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
+    const header = lines.shift().split(',').map(h=>h.trim());
+    const idxSpecies = header.indexOf('species');
+    const idxMass = header.indexOf('body_mass_g');
+    if(idxSpecies<0 || idxMass<0) throw new Error('CSV must have columns: species, body_mass_g');
+    const rows = [];
+    for(const line of lines){
+      const parts = line.split(',');
+      const sp = parts[idxSpecies]?.trim();
+      const m = parseFloat(parts[idxMass]);
+      if(!sp || !Number.isFinite(m)) continue; // drop missing
+      rows.push({species: sp, mass: m});
+    }
+    return rows;
+  }
+
+  function mean(x){ return x.reduce((a,b)=>a+b,0)/x.length }
+  function sd(x){ const m=mean(x); const v = x.reduce((s,v)=>s+(v-m)*(v-m),0)/(x.length-1); return Math.sqrt(v) }
+  function quantile(x, q){ const a=[...x].sort((a,b)=>a-b); const pos=(a.length-1)*q; const lo=Math.floor(pos), hi=Math.ceil(pos); if(lo===hi) return a[lo]; return a[lo]*(hi-pos)+a[hi]*(pos-lo) }
+
+  function sample(arr, n, withReplacement){
+    if(!withReplacement && n>arr.length) n = arr.length;
+    const out=[]; const pool = withReplacement?arr:[...arr];
+    for(let i=0;i<n;i++){
+      if(withReplacement){ out.push(rand.choice(arr)); }
+      else { const j=Math.floor(rand.next()*pool.length); out.push(pool[j]); pool.splice(j,1); }
+    }
+    return out;
+  }
+
+  function bootstrapMeans(values, reps){
+    const n = values.length; const out = new Float64Array(reps);
+    for(let r=0;r<reps;r++){
+      let s=0; for(let i=0;i<n;i++){ s += values[Math.floor(rand.next()*n)]; }
+      out[r] = s/n;
+    }
+    return out;
+  }
+
+  // --- Histogram drawing (simple Canvas) ---
+  function drawHist(canvas, data){
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width = canvas.clientWidth*2; // high-DPI
+    const H = canvas.height = canvas.clientHeight*2;
+    ctx.clearRect(0,0,W,H);
+    if(!data || data.length===0) return;
+    const min = Math.min(...data), max = Math.max(...data);
+    const bins = Math.max(6, Math.floor(Math.sqrt(data.length)));
+    const counts = new Array(bins).fill(0);
+    const width = (max-min) || 1;
+    for(const v of data){ let b = Math.floor((v-min)/width*bins); if(b===bins) b=bins-1; counts[b]++; }
+    const maxCount = Math.max(...counts);
+    const pad = 20; const barW = (W - 2*pad)/bins;
+    ctx.fillStyle = '#2b68ff';
+    for(let i=0;i<bins;i++){
+      const h = Math.round((H-2*pad) * (counts[i]/maxCount));
+      const x = pad + i*barW;
+      const y = H - pad - h;
+      ctx.fillRect(x,y, barW-2, h);
+    }
+  }
+
+  // --- App state ---
+  const speciesSelect = document.getElementById('species');
+  const nInput = document.getElementById('n');
+  const seedInput = document.getElementById('seed');
+  const replSelect = document.getElementById('withReplacement');
+  const bootRepsInput = document.getElementById('bootReps');
+  const drawBtn = document.getElementById('draw');
+  const resetBtn = document.getElementById('reset');
+  const histCanvas = document.getElementById('hist');
+
+  const statEls = {
+    n: document.getElementById('stat-n'),
+    mean: document.getElementById('stat-mean'),
+    sd: document.getElementById('stat-sd'),
+    se: document.getElementById('stat-se'),
+    ciTheory: document.getElementById('stat-ci-theory'),
+    ciBoot: document.getElementById('stat-ci-boot'),
+    info: document.getElementById('datasetInfo'),
+    sampleValues: document.getElementById('sampleValues')
+  };
+
+  let DATA = [];
+  let bySpecies = new Map();
+
+  async function init(){
+    try{
+      const res = await fetch('penguins.csv');
+      if(!res.ok) throw new Error('Could not load penguins.csv');
+      const text = await res.text();
+      DATA = parseCSV(text);
+      for(const row of DATA){
+        if(!bySpecies.has(row.species)) bySpecies.set(row.species, []);
+        bySpecies.get(row.species).push(row.mass);
+      }
+      // populate species select
+      const species = Array.from(bySpecies.keys()).sort();
+      speciesSelect.innerHTML = species.map(s=>`<option value="${s}">${s}</option>`).join('');
+      statEls.info.textContent = `Loaded ${DATA.length} rows across ${species.length} species. Missing values removed.`;
+      // Draw once
+      runSample();
+    }catch(err){
+      statEls.info.textContent = 'Error: ' + err.message + ' — Place a CSV named "penguins.csv" next to this file.';
+    }
+  }
+
+  function runSample(){
+    const sp = speciesSelect.value;
+    const pop = bySpecies.get(sp) || [];
+    const n = Math.max(2, Math.min(parseInt(nInput.value||'30',10), pop.length));
+    const reps = Math.max(0, parseInt(bootRepsInput.value||'0',10));
+    const withRepl = replSelect.value === '1';
+    const seed = seedInput.value === '' ? null : Number(seedInput.value);
+    rand.setSeed(seed);
+
+    if(pop.length === 0){
+      statEls.info.textContent = 'No data available for selected species.';
+      return;
+    }
+
+    const samp = sample(pop, n, withRepl);
+    const m = mean(samp);
+    const s = sd(samp);
+    const se = s/Math.sqrt(n);
+    const z = 1.96;
+    const lo = m - z*se;
+    const hi = m + z*se;
+
+    statEls.n.textContent = n.toString();
+    statEls.mean.textContent = m.toFixed(1);
+    statEls.sd.textContent = s.toFixed(1);
+    statEls.se.textContent = se.toFixed(1);
+    statEls.ciTheory.innerHTML = `${lo.toFixed(1)} – ${hi.toFixed(1)}`;
+
+    // Bootstrap if requested
+    if(reps>0){
+      const boots = bootstrapMeans(samp, reps);
+      const blo = quantile(boots, 0.025);
+      const bhi = quantile(boots, 0.975);
+      statEls.ciBoot.innerHTML = `${blo.toFixed(1)} – ${bhi.toFixed(1)} <span class="note">(percentile, ${reps} reps)</span>`;
+    }else{
+      statEls.ciBoot.textContent = '(skipped)';
+    }
+
+    statEls.sampleValues.textContent = samp.map(v=>v.toFixed(0)).join(', ');
+    drawHist(histCanvas, samp);
+  }
+
+  drawBtn.addEventListener('click', runSample);
+  resetBtn.addEventListener('click', ()=>{
+    nInput.value = 30; seedInput.value=''; bootRepsInput.value=0; replSelect.value='1'; runSample();
+  });
+  speciesSelect.addEventListener('change', runSample);
+
+  init();
+  </script>
+</body>
+</html>
