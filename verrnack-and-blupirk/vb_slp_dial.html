@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>V&B's So Long! Proximity Dial</title>
+  <meta name="description" content="An independent, high-resolution (20-minute / 1200-second) visualization of publicly reported minutes-to-midnight values." />
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 24px; }
+    .wrap { display: grid; grid-template-columns: 560px 1fr; gap: 24px; align-items: start; }
+    svg { width: 560px; height: 560px; }
+    code { background: #f2f2f2; padding: 0 4px; border-radius: 4px; }
+    .muted { opacity: 0.78; }
+    .note { max-width: 64ch; line-height: 1.35; }
+    .list { margin: 8px 0 0 0; padding-left: 18px; }
+    .small { font-size: 0.8rem; line-height: 1.25; }
+    .legend { display: grid; gap: 8px; margin-top: 12px; }
+    .swatchrow { display: flex; align-items: center; gap: 10px; }
+    .swatch { width: 18px; height: 18px; border: 1px solid #111; border-radius: 3px; }
+    .hr { height: 1px; background: #ddd; margin: 14px 0; }
+
+    @media (max-width: 980px) {
+      .wrap { grid-template-columns: 1fr; }
+      svg { width: min(94vw, 560px); height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <p class="muted small">
+    <strong>Official source:</strong>
+    The Doomsday Clock is maintained by the Bulletin of the Atomic Scientists.<br>
+    For the official clock, statements, and context, visit: 
+    <a href="https://thebulletin.org/doomsday-clock/" target="_blank" rel="noopener noreferrer">
+      Bulletin of the Atomic Scientists
+    </a>.
+  </p>
+  <h1 style="margin:0 0 6px 0;">V&B's So Long! Proximity Dial</h1>
+  <p class="muted" style="margin:0 0 16px 0;">
+    This is a high precision 20 minutes (1200 seconds) proximity dial mapped to 360°. Designed so approaching 0 is from the left (countdown direction).
+  </p>
+  <p class="muted" style="margin:0 0 16px 0;">
+    Radial marks on the dial show prior set points.
+  </p>
+
+  <div class="wrap">
+    <svg id="dial" viewBox="0 0 560 560" role="img" aria-labelledby="title desc">
+      <title id="title">V&B's So Long! Proximity Dial</title>
+      <desc id="desc">A circular dial with 1200 tick marks, colored background quarters indicating risk bands, faint historical markers, and a needle pointing to the current setting.</desc>
+
+      <!-- background -->
+      <rect x="0" y="0" width="560" height="560" fill="white"></rect>
+
+      <!-- colored quarter wedges (filled by JS) -->
+      <g id="bands"></g>
+
+      <!-- rings -->
+      <circle cx="280" cy="280" r="245" fill="none" stroke="black" stroke-width="3"/>
+      <circle cx="280" cy="280" r="215" fill="none" stroke="black" stroke-width="2"/>
+
+      <!-- ticks/labels/history/needle -->
+      <g id="ticks"></g>
+      <g id="labels"></g>
+      <g id="history"></g>
+      <g id="needle"></g>
+
+      <!-- center cap -->
+      <circle cx="280" cy="280" r="7" fill="white" stroke="black" stroke-width="2"/>
+    </svg>
+
+    <div class="note">
+      <!-- <p style="margin-top:0;">
+        Set <code>NOW_SECONDS</code> to the latest published value (in seconds to midnight).
+        Add entries to <code>HISTORY</code> (year, seconds, and an optional citation link).
+      </p> -->
+
+      <div class="legend" aria-label="Risk band legend">
+        <div class="swatchrow">
+          <span class="swatch" style="background:#2e7d32;"></span>
+          <span><strong>Mostly Safe</strong> (20–15 minutes)</span>
+        </div>
+        <div class="swatchrow">
+          <span class="swatch" style="background:#f9a825;"></span>
+          <span><strong>Caution</strong> (15–10 minutes)</span>
+        </div>
+        <div class="swatchrow">
+          <span class="swatch" style="background:#ef6c00;"></span>
+          <span><strong>Dangerous</strong> (10–5 minutes)</span>
+        </div>
+        <div class="swatchrow">
+          <span class="swatch" style="background:#c62828;"></span>
+          <span><strong>Mostly Unsafe</strong> (5–0 minutes)</span>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div id="readout" class="small" aria-live="polite"></div>
+
+      <h2 style="margin:14px 0 6px 0; font-size: 1.05rem;">History (markers, most recent first)</h2>
+      <ul id="histList" class="list"></ul>
+
+      <div class="hr"></div>
+
+      <h2 style="margin:14px 0 6px 0; font-size: 1.05rem;">Attribution & disclosure</h2>
+      <p class="muted small" style="margin:0;">
+        This visualization is an independent reinterpretation of publicly reported “minutes to midnight” values published by the Bulletin.
+        It is not affiliated with, endorsed by, or sponsored by the <a rel="noopener noreferrer" href="https://thebulletin.org/" target="_blank">Bulletin</a>.
+      </p>
+      <p> </p>
+      <p class="muted small" style="margin:0;">
+          Verrnack & Blupirk, associated characters, names, and narrative elements
+          are &copy; 2008–2026 Deanna M. Wilborne. All rights reserved.
+      </p>
+      
+    </div>
+  </div>
+
+  <!--
+    The So Long! Proximity Dial — Code License
+
+    © 2026 Deanna M. Wilborne
+
+    The JavaScript, HTML, CSS, and SVG *implementation code* used to
+    render and operate the "So Long! Proximity Dial" visualization
+    is licensed under the Creative Commons Attribution–NonCommercial–
+    ShareAlike 4.0 International License (CC BY-NC-SA 4.0).
+
+    This license applies ONLY to the implementation code.
+    It does NOT apply to:
+    - The Verrnack & Blupirk characters or universe
+    - Names, titles, narrative framing, or branding
+    - Artwork, comics, or story elements
+    - Trademarks or other referenced works
+    - Third-party content linked from this page
+
+    All rights to Verrnack & Blupirk are expressly reserved.
+
+    For the full license text, see:
+    https://creativecommons.org/licenses/by-nc-sa/4.0/
+  -->
+
+  <script>
+    // =======================
+    // CONFIG
+    // =======================
+    // 20 minutes = 1200 seconds
+    // IMPORTANT: Dial direction is counterclockwise so that approaching 0 is from the left.
+    const NOW_SECONDS = 85; // example: 1:25, set on 2026-01-27
+
+    // NOTE: In the sample below, 2024 and 2025 are both 90 seconds, so they overlap visually.
+    // Replace with the full historical dataset and optional links to statements.
+    const HISTORY = [
+      //{ year: 2024, seconds: 90, label: "1:30", href: "" },
+      //{ year: 2025, seconds: 90, label: "1:30", href: "" },
+      //{ year: 2026, seconds: 86, label: "1:26", href: "" },
+      { year: 1947, seconds: 420, label: "7 mins, Clock Starts", href: ""},
+      { year: 1949, seconds: 180, label: "3 mins, The Arms Race is On", href: "https://thebulletin.org/wp-content/uploads/2013/05/1949-Clock-Statement-1.pdf"},
+      { year: 1953, seconds: 120, label: "2 mins, The Horror of Hydrogen" , href: "https://thebulletin.org/wp-content/uploads/2013/05/1953-Clock-Statement-1.pdf"},
+      { year: 1960, seconds: 420, label: "7 mins, Cooperation, not Confrontation", href: "https://thebulletin.org/wp-content/uploads/2013/05/1960-Clock-Statement-1.pdf"},
+      { year: 1963, seconds: 720, label: "12 mins, A Rest from Tests", href: "https://thebulletin.org/wp-content/uploads/2013/05/1963-Clock-Statement.pdf"},
+      { year: 1968, seconds: 420, label: "7 mins, The Eastern World Explodes", href: "https://thebulletin.org/wp-content/uploads/2013/05/1968-Clock-Statement.pdf"},
+      { year: 1969, seconds: 600, label: "10 mins, A Landmark Agreement", href: "https://thebulletin.org/wp-content/uploads/2013/05/1969-Clock-Statement-1.pdf"},
+      { year: 1972, seconds: 720, label: "12 mins, Passing the SALT", href: "https://thebulletin.org/wp-content/uploads/2013/05/1972-Clock-Statement.pdf"},
+      { year: 1974, seconds: 540, label: "9 mins, India Joins the Club", href: "https://thebulletin.org/wp-content/uploads/2013/05/1974-Clock-Statement.pdf"},
+      { year: 1980, seconds: 420, label: "7 mins, Accelerating drive toward world disaster", href: "https://thebulletin.org/wp-content/uploads/2013/05/1980-Clock-Statement.pdf"},
+      { year: 1981, seconds: 240, label: "4 mins, Reheating the Cold War", href: "https://thebulletin.org/wp-content/uploads/2013/05/1981-Clock-Statement.pdf"},
+      { year: 1984, seconds: 180, label: "3 mins, Stalemate and Star Wars", href: "https://thebulletin.org/wp-content/uploads/2013/05/1984-Clock-Statement.pdf"},
+      { year: 1988, seconds: 360, label: "6 mins, Protests Yield Progress", href: "https://thebulletin.org/wp-content/uploads/2013/05/1988-Clock-Statement.pdf"},
+      { year: 1990, seconds: 600, label: "10 mins, Lowering the Iron Curtain", href: "https://thebulletin.org/wp-content/uploads/2013/05/1990-Clock-Statement.pdf"},
+      { year: 1991, seconds: 1020, label: "17 mins, A Fresh START", href: "https://thebulletin.org/wp-content/uploads/2013/05/1991-Clock-Statement.pdf"},
+      { year: 1995, seconds: 840, label: "14 mins, A Close Call", href: "https://thebulletin.org/wp-content/uploads/2013/05/1995-Clock-Statement.pdf"},
+      { year: 1998, seconds: 540, label: "9 mins, South Asia's Nasty Surprise", href: "https://thebulletin.org/wp-content/uploads/2013/05/1998-Clock-Statement.pdf"},
+      { year: 2002, seconds: 420, label: "7 mins, New Worries, New Weapons", href: "https://thebulletin.org/wp-content/uploads/2014/04/2002-Clock-Statement.pdf"},
+      { year: 2007, seconds: 300, label: "5 mins, North Korea Rising", href: "https://thebulletin.org/wp-content/uploads/2013/05/2007-Clock-Statement.pdf"},
+      { year: 2010, seconds: 360, label: "6 mins, Hope after Copenhagen", href: "https://thebulletin.org/wp-content/uploads/2013/05/2010-Clock-Statement.pdf"},
+      { year: 2012, seconds: 300, label: "5 mins, Desperately Seeking Solutions", href: "https://thebulletin.org/wp-content/uploads/2013/05/2012-Clock-Statement.pdf"},
+      { year: 2015, seconds: 180, label: "3 mins, Failures of Leadership", href: "https://thebulletin.org/wp-content/uploads/2016/07/2015-Clock-Statement.pdf"},
+      { year: 2017, seconds: 150, label: "2.5 mins, A half step toward Doomsday", href: "https://thebulletin.org/wp-content/uploads/2018/01/Final-2017-Clock-Statement.pdf"},
+      { year: 2018, seconds: 120, label: "2 Minutes to Midnight", href: "https://thebulletin.org/2018-doomsday-clock-statement/"},
+      { year: 2020, seconds: 100, label: "100 Seconds to Midnight", href: "https://thebulletin.org/doomsday-clock/2020-doomsday-clock-statement/"},
+      { year: 2023, seconds: 90, label: "90 Seconds to Midnight", href: "https://thebulletin.org/doomsday-clock/2023-doomsday-clock-statement/"},
+      { year: 2025, seconds: 89, label: "89 Seconds to Midnight", href: "https://thebulletin.org/doomsday-clock/2025-statement/"},
+      { year: 2026, seconds: 85, label: "85 Seconds to Midnight", href: "https://thebulletin.org/doomsday-clock/2026-statement/"},
+      // { year: 1947, seconds: 420, label: "7 minutes to midnight, Clock Starts", href: ""},
+
+    ];
+
+    const historySorted = [...HISTORY].sort((a, b) => b.year - a.year);
+
+    // Visual tuning
+    const BAND_OPACITY = 0.25;  // keep light so ticks dominate
+    const HISTORY_OPACITY = 0.38;
+
+    // =======================
+    // SVG helpers
+    // =======================
+    const svg = document.getElementById("dial");
+    const gBands = document.getElementById("bands");
+    const gTicks = document.getElementById("ticks");
+    const gLabels = document.getElementById("labels");
+    const gHistory = document.getElementById("history");
+    const gNeedle = document.getElementById("needle");
+
+    const CX = 280, CY = 280;
+    const R_OUT = 245, R_IN = 215;
+    const R_BAND_OUT = 242; // inside outer ring
+    const R_BAND_IN  = 216; // just outside inner ring
+
+    function polarToXY(r, angleRad) {
+      // 0 at top; clockwise would be +sin; we will handle direction in angleForSeconds()
+      const x = CX + r * Math.sin(angleRad);
+      const y = CY - r * Math.cos(angleRad);
+      return { x, y };
+    }
+
+    function angleForSeconds(s) {
+      // Counterclockwise mapping (negative angle) so approaching 0 is from the left.
+      return -(s / 1200) * Math.PI * 2;
+    }
+
+    function mkLine(x1,y1,x2,y2, stroke, w, opacity=1) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      el.setAttribute("x1", x1); el.setAttribute("y1", y1);
+      el.setAttribute("x2", x2); el.setAttribute("y2", y2);
+      el.setAttribute("stroke", stroke);
+      el.setAttribute("stroke-width", w);
+      el.setAttribute("opacity", opacity);
+      el.setAttribute("stroke-linecap", "round");
+      return el;
+    }
+
+    function mkText(x,y, str, size=18, anchor="middle", opacity=1) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      el.setAttribute("x", x); el.setAttribute("y", y);
+      el.setAttribute("font-size", size);
+      el.setAttribute("text-anchor", anchor);
+      el.setAttribute("dominant-baseline", "middle");
+      el.setAttribute("fill", "black");
+      el.setAttribute("opacity", opacity);
+      el.textContent = str;
+      return el;
+    }
+
+    function mkPath(d, fill, opacity=1, stroke="none", strokeWidth=0) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      el.setAttribute("d", d);
+      el.setAttribute("fill", fill);
+      el.setAttribute("opacity", opacity);
+      el.setAttribute("stroke", stroke);
+      el.setAttribute("stroke-width", strokeWidth);
+      return el;
+    }
+
+    function secondsToMMSS(s) {
+      const mm = Math.floor(s / 60);
+      const ss = s % 60;
+      return `${mm}:${String(ss).padStart(2,"0")}`;
+    }
+
+    // =======================
+    // Donut segment (annular wedge)
+    // startAngle -> endAngle (in radians), going the short way in the direction implied by the angles.
+    // We control sweep with largeArc flags.
+    // =======================
+    function donutSegmentPath(rOuter, rInner, aStart, aEnd) {
+      // Normalize for arc flags
+      let delta = aEnd - aStart;
+      // bring into [-2π, 2π]
+      while (delta > Math.PI*2) delta -= Math.PI*2;
+      while (delta < -Math.PI*2) delta += Math.PI*2;
+
+      const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
+      const sweepOuter = delta >= 0 ? 1 : 0; // SVG sweep: 1 = positive-angle direction
+      const sweepInner = sweepOuter ? 0 : 1; // reverse for inner arc
+
+      const p1 = polarToXY(rOuter, aStart);
+      const p2 = polarToXY(rOuter, aEnd);
+      const p3 = polarToXY(rInner, aEnd);
+      const p4 = polarToXY(rInner, aStart);
+
+      return [
+        `M ${p1.x.toFixed(3)} ${p1.y.toFixed(3)}`,
+        `A ${rOuter} ${rOuter} 0 ${largeArc} ${sweepOuter} ${p2.x.toFixed(3)} ${p2.y.toFixed(3)}`,
+        `L ${p3.x.toFixed(3)} ${p3.y.toFixed(3)}`,
+        `A ${rInner} ${rInner} 0 ${largeArc} ${sweepInner} ${p4.x.toFixed(3)} ${p4.y.toFixed(3)}`,
+        "Z"
+      ].join(" ");
+    }
+
+    // =======================
+    // Color bands
+    // Ranges (seconds):
+    // Mostly Safe:   1200 -> 900  (20–15 min)
+    // Caution:        900 -> 600  (15–10 min)
+    // Dangerous:      600 -> 300  (10–5 min)
+    // Mostly Unsafe:  300 -> 0    (5–0 min)
+    // =======================
+    const bands = [
+      { name: "Mostly Safe",   s0: 1200, s1:  900, color: "#2e7d32" },
+      { name: "Caution",       s0:  900, s1:  600, color: "#f9a825" },
+      { name: "Dangerous",     s0:  600, s1:  300, color: "#ef6c00" },
+      { name: "Mostly Unsafe", s0:  300, s1:    0, color: "#c62828" },
+    ];
+
+    for (const b of bands) {
+      const aStart = angleForSeconds(b.s0);
+      const aEnd   = angleForSeconds(b.s1);
+      const d = donutSegmentPath(R_BAND_OUT, R_BAND_IN, aStart, aEnd);
+      const p = mkPath(d, b.color, BAND_OPACITY);
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = `${b.name} (${Math.floor(b.s0/60)}–${Math.floor(b.s1/60)} minutes)`;
+      p.appendChild(title);
+      gBands.appendChild(p);
+    }
+
+    // =======================
+    // Ticks: 1200 of them
+    // =======================
+    for (let s = 0; s < 1200; s++) {
+      const a = angleForSeconds(s);
+
+      const isMinute = (s % 60 === 0);
+      const isTenSec = (s % 10 === 0);
+      const isFiveSec = (s % 5 === 0);
+
+      let len = 10, w = 1.2, op = 1;
+      if (isMinute) { len = 24; w = 2.4; op = 1; }
+      else if (isTenSec) { len = 15; w = 1.7; op = 0.95; }
+      else if (isFiveSec) { len = 13; w = 1.5; op = 0.88; }
+      else { len = 10; w = 1.0; op = 0.70; }
+
+      const p1 = polarToXY(R_OUT, a);
+      const p2 = polarToXY(R_OUT - len, a);
+      gTicks.appendChild(mkLine(p1.x, p1.y, p2.x, p2.y, "black", w, op));
+    }
+
+    // Minute labels 0..19 around the ring (each minute = 60 seconds)
+    for (let m = 0; m < 20; m++) {
+      const a = angleForSeconds(m * 60);
+      const p = polarToXY(182, a);
+      gLabels.appendChild(mkText(p.x, p.y, String(m), 22, "middle", 1));
+    }
+
+    // =======================
+    // History markers
+    // If multiple entries share the same seconds value, we "jitter" them inward slightly.
+    // =======================
+    const bucket = new Map(); // seconds -> count
+    for (const h of HISTORY) {
+      bucket.set(h.seconds, (bucket.get(h.seconds) ?? 0) + 1);
+    }
+    const used = new Map(); // seconds -> used count so far
+
+    function addHistoryMarker(entry) {
+      const a = angleForSeconds(entry.seconds);
+
+      const total = bucket.get(entry.seconds) ?? 1;
+      const idx = (used.get(entry.seconds) ?? 0);
+      used.set(entry.seconds, idx + 1);
+
+      // jitter: stack duplicates by moving them inward a few pixels each
+      const jitter = total > 1 ? (idx - (total - 1) / 2) * 4 : 0;
+
+      const p1 = polarToXY(R_IN - jitter, a);
+      const p2 = polarToXY(R_IN - 20 - jitter, a);
+      const mark = mkLine(p1.x, p1.y, p2.x, p2.y, "black", 2.4, HISTORY_OPACITY);
+
+      // Tooltip
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = `${entry.year}: ${entry.label ?? secondsToMMSS(entry.seconds)} (${entry.seconds}s)`;
+      mark.appendChild(title);
+
+      gHistory.appendChild(mark);
+    }
+    HISTORY.forEach(addHistoryMarker);
+
+    // =======================
+    // Needle for NOW_SECONDS
+    // =======================
+    (function drawNeedle() {
+      const a = angleForSeconds(NOW_SECONDS);
+      const tip = polarToXY(210, a);
+      const base = polarToXY(55, a);
+      gNeedle.appendChild(mkLine(base.x, base.y, tip.x, tip.y, "black", 3.2, 1));
+    })();
+
+    // =======================
+    // Readout + list
+    // =======================
+    document.getElementById("readout").innerHTML =
+      `<p style="margin:0;"><strong>Now:</strong> ${secondsToMMSS(NOW_SECONDS)} (${NOW_SECONDS} seconds) to midnight.</p>`;
+
+    const ul = document.getElementById("histList");
+    for (const h of historySorted) {
+      const li = document.createElement("li");
+      const text = `${h.year}: ${h.label ?? secondsToMMSS(h.seconds)} (${h.seconds}s)`;
+      if (h.href && h.href.trim()) {
+        const a = document.createElement("a");
+        a.href = h.href;
+        a.textContent = text;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        li.appendChild(a);
+      } else {
+        li.textContent = text;
+      }
+      ul.appendChild(li);
+    }
+  </script>
+</body>
+</html>
